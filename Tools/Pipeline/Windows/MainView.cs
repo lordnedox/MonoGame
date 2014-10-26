@@ -3,6 +3,8 @@
 // file 'LICENSE.txt', which is part of this source code package.
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
@@ -26,7 +28,7 @@ namespace MonoGame.Tools.Pipeline
         private const string XnaContentProjectFileFilter = "XNA Content Projects (*.contentproj)|*.contentproj";
 
         public MainView()
-        {            
+        {
             InitializeComponent();
 
             _treeIcons = new ImageList();
@@ -34,7 +36,7 @@ namespace MonoGame.Tools.Pipeline
             _treeIcons.Images.Add(Image.FromStream(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(@"MonoGame.Tools.Pipeline.Icons.folder_open.png")));
             _treeIcons.Images.Add(Image.FromStream(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(@"MonoGame.Tools.Pipeline.Icons.folder_closed.png")));
             _treeIcons.Images.Add(Image.FromStream(System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(@"MonoGame.Tools.Pipeline.Icons.settings.png")));
-            
+
             _treeView.ImageList = _treeIcons;
             _treeView.BeforeExpand += TreeViewOnBeforeExpand;
             _treeView.BeforeCollapse += TreeViewOnBeforeCollapse;
@@ -43,7 +45,7 @@ namespace MonoGame.Tools.Pipeline
             _contextMenu = new ContextMenuStrip();
             _contextMenu.ItemClicked += OnContextMenuItemClicked;
 
-            _propertyGrid.PropertyValueChanged += OnPropertyGridPropertyValueChanged;            
+            _propertyGrid.PropertyValueChanged += OnPropertyGridPropertyValueChanged;
         }
 
         private void OnPropertyGridPropertyValueChanged(object s, PropertyValueChangedEventArgs e)
@@ -65,12 +67,12 @@ namespace MonoGame.Tools.Pipeline
             {
                 case ContextMenuInclude:
                     {
-                        _controller.Include((e.ClickedItem.Tag as IProjectItem).Location);                        
+                        _controller.Include((e.ClickedItem.Tag as IProjectItem).Location);
                     } break;
                 case ContextMenuExclude:
                     {
-                        _controller.Exclude(e.ClickedItem.Tag as ContentItem);                        
-                    } break;                
+                        _controller.Exclude(e.ClickedItem.Tag as ContentItem);
+                    } break;
                 default:
                     throw new Exception(string.Format("Unhandled menu item text={0}", e.ClickedItem.Text));
             }
@@ -95,7 +97,7 @@ namespace MonoGame.Tools.Pipeline
                     {
                         _contextMenu.Items.Clear();
 
-                        var item = _contextMenu.Items.Add(ContextMenuExclude);                        
+                        var item = _contextMenu.Items.Add(ContextMenuExclude);
                         item.Tag = node.Tag;
 
                         _contextMenu.Show(_treeView, p);
@@ -107,8 +109,8 @@ namespace MonoGame.Tools.Pipeline
                         var item = _contextMenu.Items.Add(ContextMenuInclude);
                         item.Tag = node.Tag;
 
-                        _contextMenu.Show(_treeView, p); 
-                    }                   
+                        _contextMenu.Show(_treeView, p);
+                    }
                 }
             }
         }
@@ -148,7 +150,7 @@ namespace MonoGame.Tools.Pipeline
                 AddExtension = true,
                 CheckPathExists = true,
                 Filter = MonoGameContentProjectFileFilter,
-                FilterIndex = 2,                
+                FilterIndex = 2,
             };
             var result = dialog.ShowDialog(this);
             filePath = dialog.FileName;
@@ -208,9 +210,9 @@ namespace MonoGame.Tools.Pipeline
         }
 
         public void AddTreeItem(IProjectItem item)
-        {            
+        {
             var path = item.Location;
-            var folders = path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar}, StringSplitOptions.RemoveEmptyEntries);
+            var folders = path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
 
             var root = _treeView.Nodes[0];
             var parent = root.Nodes;
@@ -226,7 +228,7 @@ namespace MonoGame.Tools.Pipeline
                     var idx = path.IndexOf(folder);
                     var curPath = path.Substring(0, idx + folder.Length);
                     folderNode.Tag = new FolderItem(curPath);
-                    
+
                     parent = folderNode.Nodes;
                 }
                 else
@@ -259,18 +261,18 @@ namespace MonoGame.Tools.Pipeline
         {
             var node = _treeView.AllNodes().Find(e => e.Tag == item);
             if (node != null)
-			{
-				// Do something useful, eg...
-				/* 
-				if (!node.IsValid)
-				{
-	                node.ForeColor = Color.Red;
-				}
-				else
-				{
-					node.ForeColor = Color.Black;
-				}*/
-			}
+            {
+                // Do something useful, eg...
+                /* 
+                if (!node.IsValid)
+                {
+                    node.ForeColor = Color.Red;
+                }
+                else
+                {
+                    node.ForeColor = Color.Black;
+                }*/
+            }
         }
 
         public void ShowProperties(IProjectItem item)
@@ -310,10 +312,10 @@ namespace MonoGame.Tools.Pipeline
                 Filter = "All Files (*.*)|*.*",
                 InitialDirectory = initialDirectory,
                 Multiselect = false,
-                
+
             };
             var result = dlg.ShowDialog(this);
-            
+
             file = dlg.FileName;
 
             if (result != DialogResult.OK)
@@ -383,7 +385,7 @@ namespace MonoGame.Tools.Pipeline
 
             // Get the node that the user has clicked.
             var node = _treeView.GetNodeAt(p);
-            if (node == null) 
+            if (node == null)
                 return;
 
             // Select the node the user has clicked.
@@ -396,6 +398,7 @@ namespace MonoGame.Tools.Pipeline
         {
             _controller.Build(false);
         }
+
 
         private void RebuilMenuItemClick(object sender, EventArgs e)
         {
@@ -451,5 +454,87 @@ namespace MonoGame.Tools.Pipeline
             _cleanMenuItem.Enabled = _controller.ProjectOpen;
             _rebuilMenuItem.Enabled = _controller.ProjectOpen;
         }
+
+
+
+
+        private void btnMarcoFix_Click(object sender, EventArgs e)
+        {
+            FixFailedTextures();
+        }
+
+
+        private void FixFailedTextures()
+        {
+            string logText = _outputWindow.Text;
+            string[] lines = logText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+
+            _outputWindow.AppendText(" ===== MARCO START ==== ");
+
+            List<string> filesToQuant = new List<string>();
+            string currentPath = "";
+            for (int i = 0; i < lines.Length; i++)
+            {
+                string line = lines[i];
+                if (line.StartsWith(@"D:/"))
+                {
+                    currentPath = line;
+                }
+                //D:/DevX/WP7/Nex.XQuest2/Nex.XQuest2.ContentProjects/IOS/game/tileset_snow/sprites.plist: error: Failed to create importer 'CocosPListImporter'
+                if (!string.IsNullOrEmpty(currentPath))
+                {
+                    if (line.StartsWith("Could not compress texture"))
+                    {
+                        if (line.Contains("PVRTC Compressed textures must be square") && (currentPath.EndsWith("png") || currentPath.EndsWith("jpg")))
+                        {
+                            //remove the xnb and replace it with the original file (png or jpg)
+                            _outputWindow.AppendText(" == FIXING: " + currentPath + Environment.NewLine);
+
+                            string origPath = currentPath;
+                            FileInfo origFile = new FileInfo(origPath);
+
+                            //D:/DevX/WP7/Nex.XQuest2/Nex.XQuest2.ContentProjects/IOS/game/dice
+                            string outPath = currentPath.Replace("/IOS/", "/IOS/bin/IOS/");
+
+                            //Delete the XNB file
+                            string outXnb = outPath.Substring(0, outPath.Length - 3) + "xnb";
+                            File.Delete(outXnb);
+
+                            //Replace extension
+                            File.Copy(origPath, outPath, true);
+
+                            if (outPath.EndsWith("png"))
+                            {
+                                filesToQuant.Add(outPath);
+                            }
+                        }
+                    }
+                }
+            }
+
+            foreach (var f in filesToQuant)
+            {
+                if (!string.IsNullOrEmpty(currentPath))
+                {
+                    _outputWindow.AppendText(" ===== RUNNING PNGQUANT ON: " + f + Environment.NewLine);
+
+                    var process = new Process();
+                    process.StartInfo.FileName = @"D:\DevX\WP7\Nex.XQuest2\Nex.XQuest2.ContentProjects\PNGQUANT\pngquant.exe";
+                    process.StartInfo.Arguments = f + " --ext .png --force ";
+                    try
+                    {
+                        process.Start();
+                        process.WaitForExit();
+                    }
+                    catch (Exception ex)
+                    {
+                        _outputWindow.AppendText("ERROR: " + ex + Environment.NewLine);
+                    }
+                }
+            }
+
+            _outputWindow.AppendText(" ===== MARCO FINISH ==== " + Environment.NewLine);
+        }
+
     }
 }
