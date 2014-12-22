@@ -57,7 +57,7 @@ namespace MonoGame.Tools.Pipeline
             this._helpMenu = new System.Windows.Forms.ToolStripMenuItem();
             this._viewHelpMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this._aboutMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.btnMarcoFix = new System.Windows.Forms.Button();
+            this.btnAQ2MarcoFix = new System.Windows.Forms.Button();
             _toolStripSeparator3 = new System.Windows.Forms.ToolStripSeparator();
             _toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             _toolStripSeparator2 = new System.Windows.Forms.ToolStripSeparator();
@@ -304,22 +304,22 @@ namespace MonoGame.Tools.Pipeline
             this._aboutMenuItem.Size = new System.Drawing.Size(146, 22);
             this._aboutMenuItem.Text = "&About...";
             // 
-            // btnMarcoFix
+            // btnAQ2MarcoFix
             // 
-            this.btnMarcoFix.Location = new System.Drawing.Point(840, 12);
-            this.btnMarcoFix.Name = "btnMarcoFix";
-            this.btnMarcoFix.Size = new System.Drawing.Size(119, 37);
-            this.btnMarcoFix.TabIndex = 1;
-            this.btnMarcoFix.Text = "Run Marco Fix";
-            this.btnMarcoFix.UseVisualStyleBackColor = true;
-            this.btnMarcoFix.Click += new System.EventHandler(this.btnMarcoFix_Click);
+            this.btnAQ2MarcoFix.Location = new System.Drawing.Point(840, 12);
+            this.btnAQ2MarcoFix.Name = "btnAQ2MarcoFix";
+            this.btnAQ2MarcoFix.Size = new System.Drawing.Size(119, 37);
+            this.btnAQ2MarcoFix.TabIndex = 1;
+            this.btnAQ2MarcoFix.Text = "AQuest2 Marco Fix";
+            this.btnAQ2MarcoFix.UseVisualStyleBackColor = true;
+            this.btnAQ2MarcoFix.Click += new System.EventHandler(this.btnMarcoFix_Click);
             // 
             // MainView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(984, 661);
-            this.Controls.Add(this.btnMarcoFix);
+            this.Controls.Add(this.btnAQ2MarcoFix);
             this.Controls.Add(_splitEditorOutput);
             this.Controls.Add(this._mainMenu);
             this.MainMenuStrip = this._mainMenu;
@@ -365,7 +365,7 @@ namespace MonoGame.Tools.Pipeline
         private System.Windows.Forms.TextBox _outputWindow;
         private System.Windows.Forms.ToolStripMenuItem _closeMenuItem;
         private System.Windows.Forms.ToolStripMenuItem _importMenuItem;
-        private System.Windows.Forms.Button btnMarcoFix;
+        private System.Windows.Forms.Button btnAQ2MarcoFix;
     }
 }
 

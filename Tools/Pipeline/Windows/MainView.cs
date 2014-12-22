@@ -460,11 +460,10 @@ namespace MonoGame.Tools.Pipeline
 
         private void btnMarcoFix_Click(object sender, EventArgs e)
         {
-            FixFailedTextures();
+            FixAQuest2FailedTextures();
         }
 
-
-        private void FixFailedTextures()
+        private void FixAQuest2FailedTextures()
         {
             string logText = _outputWindow.Text;
             string[] lines = logText.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
@@ -531,6 +530,40 @@ namespace MonoGame.Tools.Pipeline
                         _outputWindow.AppendText("ERROR: " + ex + Environment.NewLine);
                     }
                 }
+            }
+
+            //Copy additional files
+            string addInputPath = @"D:\DevX\WP7\Nex.XQuest2\Nex.XQuest2Lite.WP7\bin\Windows Phone\Debug\Content";
+            DirectoryInfo addIn = new DirectoryInfo(addInputPath);
+            FileInfo[] plistFiles = addIn.GetFiles("*.plist.xnb", SearchOption.AllDirectories);
+            foreach (var plistFile in plistFiles)
+            {
+                string newPath = plistFile.FullName.Replace(@"Nex.XQuest2Lite.WP7\bin\Windows Phone\Debug\Content\", @"Nex.XQuest2.ContentProjects\IOS\bin\IOS\");
+                plistFile.CopyTo(newPath, true);
+
+                _outputWindow.AppendText(" ===== COPIED ADDITIONAL FILE: " + newPath + Environment.NewLine);
+            }
+            FileInfo[] fntFiles = addIn.GetFiles("*.fnt.xnb", SearchOption.AllDirectories);
+            foreach (var fntFile in fntFiles)
+            {
+                string newPath = fntFile.FullName.Replace(@"Nex.XQuest2Lite.WP7\bin\Windows Phone\Debug\Content\", @"Nex.XQuest2.ContentProjects\IOS\bin\IOS\");
+                fntFile.CopyTo(newPath, true);
+
+                _outputWindow.AppendText(" ===== COPIED ADDITIONAL FILE: " + newPath + Environment.NewLine);
+            }
+
+            string sfxFolder = @"D:\DevX\WP7\Nex.XQuest2\Nex.XQuest2Lite.WP7\bin\Windows Phone\Debug\Content\sounds\sfx";
+            string newSfxFolder = @"D:\DevX\WP7\Nex.XQuest2\Nex.XQuest2.ContentProjects\IOS\bin\IOS\sounds\sfx";
+            
+            if (!Directory.Exists(newSfxFolder)) Directory.CreateDirectory(newSfxFolder);
+
+            DirectoryInfo sfxIn = new DirectoryInfo(sfxFolder);
+            FileInfo[] sfxFiles = sfxIn.GetFiles();
+            foreach (var sfxFile in sfxFiles)
+            {
+                sfxFile.CopyTo(Path.Combine(newSfxFolder, sfxFile.Name), true);
+
+                _outputWindow.AppendText(" ===== COPIED SFX FILE: " + sfxFile.Name + Environment.NewLine);
             }
 
             _outputWindow.AppendText(" ===== MARCO FINISH ==== " + Environment.NewLine);
