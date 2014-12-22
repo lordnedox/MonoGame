@@ -141,16 +141,30 @@ namespace Microsoft.Xna.Framework.Graphics
                     SharpDX.DataStream stream;
                     var databox = d3dContext.MapSubresource(stagingTex, 0, SharpDX.Direct3D11.MapMode.Read, SharpDX.Direct3D11.MapFlags.None, out stream);
 
-                    // Some drivers may add pitch to rows.
-                    // We need to copy each row separatly and skip trailing zeros.
-                    var currentIndex = startIndex;
-                    var elementSize = SharpDX.Utilities.SizeOf<T>();
-                    for (var row = 0; row < rows; row++)
+                    var elementSize = _format.GetSize();
+                    var rowSize = elementSize * elementsInRow;
+                    if (rowSize == databox.RowPitch)
+                        stream.ReadRange(data, startIndex, elementCount);
+                    else
                     {
-                        stream.ReadRange(data, currentIndex, elementsInRow);
-                        stream.Seek(databox.RowPitch - (elementSize * elementsInRow), SeekOrigin.Current);
-                        currentIndex += elementsInRow;
+                        // Some drivers may add pitch to rows.
+                        // We need to copy each row separatly and skip trailing zeros.
+                        stream.Seek(startIndex, SeekOrigin.Begin);
+
+                        int elementSizeInByte = Marshal.SizeOf(typeof(T));
+                        for (var row = 0; row < rows; row++)
+                        {
+                            int i;
+                            for (i = row * rowSize / elementSizeInByte; i < (row + 1) * rowSize / elementSizeInByte; i++)
+                                data[i] = stream.Read<T>();
+
+                            if (i >= elementCount)
+                                break;
+
+                            stream.Seek(databox.RowPitch - rowSize, SeekOrigin.Current);
+                        }
                     }
+
                     stream.Dispose();
                 }
         }
@@ -158,19 +172,25 @@ namespace Microsoft.Xna.Framework.Graphics
         private static Texture2D PlatformFromStream(GraphicsDevice graphicsDevice, Stream stream)
         {
 #if WINDOWS_PHONE
-            WriteableBitmap writableBitmap = null;
+            WriteableBitmap bitmap = null;
             Threading.BlockOnUIThread(() =>
             {
                     BitmapImage bitmapImage = new BitmapImage();
                     bitmapImage.SetSource(stream);
-                    writableBitmap = new WriteableBitmap(bitmapImage);
+                    bitmap = new WriteableBitmap(bitmapImage);
             });
+
             // Convert from ARGB to ABGR 
-            ConvertToABGR(writableBitmap.PixelHeight, writableBitmap.PixelWidth, writableBitmap.Pixels);
-            Texture2D texture = new Texture2D(graphicsDevice, writableBitmap.PixelWidth, writableBitmap.PixelHeight, false, SurfaceFormat.Color);
-            texture.SetData<int>(writableBitmap.Pixels);
+            ConvertToABGR(bitmap.PixelHeight, bitmap.PixelWidth, bitmap.Pixels);
+
+            Texture2D texture = new Texture2D(graphicsDevice, bitmap.PixelWidth, bitmap.PixelHeight);
+            texture.SetData<int>(bitmap.Pixels);
             return texture;
-#else
+#endif
+#if !WINDOWS_PHONE
+
+            if (!stream.CanSeek)
+                throw new NotSupportedException("stream must support seek operations");
 
             // For reference this implementation was ultimately found through this post:
             // http://stackoverflow.com/questions/9602102/loading-textures-with-sharpdx-in-metro 
@@ -204,13 +224,15 @@ namespace Microsoft.Xna.Framework.Graphics
             ConvertToRGBA(height, width, pixelData);
 
             var waitEvent = new ManualResetEventSlim(false);
-            Threading.BlockOnUIThread(() =>
+            Deployment.Current.Dispatcher.BeginInvoke(() =>
             {
                 var bitmap = new WriteableBitmap(width, height);
                 System.Buffer.BlockCopy(pixelData, 0, bitmap.Pixels, 0, pixelData.Length);
                 bitmap.SaveJpeg(stream, width, height, 0, 100);
+                waitEvent.Set();
             });
 
+            waitEvent.Wait();
 #endif
 #if !WINDOWS_STOREAPP && !WINDOWS_PHONE
             throw new NotImplementedException();
@@ -366,6 +388,21 @@ namespace Microsoft.Xna.Framework.Graphics
 
         private void PlatformReload(Stream textureStream)
         {
+#if WINDOWS_PHONE
+            Deployment.Current.Dispatcher.BeginInvoke(() =>
+            {
+                BitmapImage bitmapImage = new BitmapImage();
+                bitmapImage.SetSource(textureStream);
+                WriteableBitmap bitmap = new WriteableBitmap(bitmapImage);
+
+                // Convert from ARGB to ABGR 
+                ConvertToABGR(bitmap.PixelHeight, bitmap.PixelWidth, bitmap.Pixels);
+
+                this.SetData<int>(bitmap.Pixels);
+
+                textureStream.Dispose();
+            });
+#endif
         }
 	}
 }

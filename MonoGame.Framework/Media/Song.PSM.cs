@@ -18,6 +18,9 @@ namespace Microsoft.Xna.Framework.Media
 
         private void PlatformInitialize(string fileName)
         {
+			// PSM can only load MP3 files, but XNA XNBs use always WMA.
+			if (fileName!=null && Path.GetExtension(fileName).ToLower()==".wma") fileName=Path.ChangeExtension (fileName,"mp3");
+			
 			_bgm = new Bgm(fileName);
         }
      
@@ -115,6 +118,56 @@ namespace Microsoft.Xna.Framework.Media
 				
 			}
 		}
+
+        private Album PlatformGetAlbum()
+        {
+            return null;
+        }
+
+        private Artist PlatformGetArtist()
+        {
+            return null;
+        }
+
+        private Genre PlatformGetGenre()
+        {
+            return null;
+        }
+
+        private TimeSpan PlatformGetDuration()
+        {
+            return _duration;
+        }
+
+        private bool PlatformIsProtected()
+        {
+            return false;
+        }
+
+        private bool PlatformIsRated()
+        {
+            return false;
+        }
+
+        private string PlatformGetName()
+        {
+            return Path.GetFileNameWithoutExtension(_name);
+        }
+
+        private int PlatformGetPlayCount()
+        {
+            return _playCount;
+        }
+
+        private int PlatformGetRating()
+        {
+            return 0;
+        }
+
+        private int PlatformGetTrackNumber()
+        {
+            return 0;
+        }
     }
 }
 

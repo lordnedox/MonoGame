@@ -58,10 +58,8 @@ namespace Microsoft.Xna.Framework
     {
         private bool _isResizable;
         private bool _isBorderless;
-#if WINDOWS
-        private bool _isMouseHidden;
         private bool _isMouseInBounds;
-#endif
+
 		//private DisplayOrientation _currentOrientation;
         private IntPtr _windowHandle;
         private INativeWindow window;
@@ -76,8 +74,6 @@ namespace Microsoft.Xna.Framework
         private Rectangle targetBounds;
         private bool updateClientBounds;
         bool disposed;
-
-        private string _title;
 
         #region Internal Properties
 
@@ -111,15 +107,13 @@ namespace Microsoft.Xna.Framework
             get { return _isResizable; }
             set
             {
-                _isResizable = value;
-                
+                if (_isResizable != value)
+                    _isResizable = value;
+                else
+                    return;
                 if (_isBorderless)
                     return;
-                
-                if (window != null)
-                {
-                    window.WindowBorder = _isResizable ? WindowBorder.Resizable : WindowBorder.Fixed;
-                }
+                window.WindowBorder = _isResizable ? WindowBorder.Resizable : WindowBorder.Fixed;
             }
         }
 
@@ -138,13 +132,10 @@ namespace Microsoft.Xna.Framework
             get { return _isBorderless; }
             set
             {
-                _isBorderless = value;
-
-                if (window == null)
-                {
+                if (_isBorderless != value)
+                    _isBorderless = value;
+                else
                     return;
-                }
-                
                 if (_isBorderless)
                 {
                     window.WindowBorder = WindowBorder.Hidden;
@@ -225,6 +216,13 @@ namespace Microsoft.Xna.Framework
             OnClientSizeChanged();
         }
 
+        internal void ProcessEvents()
+        {
+            Window.ProcessEvents();
+            UpdateWindowState();
+            HandleInput();
+        }
+
         private void UpdateWindowState()
         {
             // we should wait until window's not fullscreen to resize
@@ -282,11 +280,6 @@ namespace Microsoft.Xna.Framework
         private void OnMouseEnter(object sender, EventArgs e)
         {
             _isMouseInBounds = true;
-            if (!game.IsMouseVisible && !_isMouseHidden)
-            {
-                _isMouseHidden = true;
-                System.Windows.Forms.Cursor.Hide();
-            }
         }
 
         private void OnMouseLeave(object sender, EventArgs e)
@@ -296,11 +289,6 @@ namespace Microsoft.Xna.Framework
             if (Mouse.GetState().LeftButton == ButtonState.Released)
             {
                 _isMouseInBounds = false;
-                if (_isMouseHidden)
-                {
-                    _isMouseHidden = false;
-                    System.Windows.Forms.Cursor.Show();
-                }
             }
         }
 #endif
@@ -318,44 +306,6 @@ namespace Microsoft.Xna.Framework
 
             GraphicsContext.ShareContexts = true;
 
-	/*
-* Our version that managed to create a window that was properly sized
-
-            if (window != null)
-            {
-                window.Dispose();
-            }
-
-            var pp = presentationParameters;
-
-            var colorSize = GraphicsExtensions.Size(pp.BackBufferFormat) * 8;
-            var depthSize = 0;
-            var stencilSize = 0;
-
-            switch (pp.DepthStencilFormat)
-            {
-                case DepthFormat.None:
-                    break;
-                case DepthFormat.Depth16:
-                    depthSize = 16;
-                    break;
-                case DepthFormat.Depth24:
-                    depthSize = 24;
-                    break;
-                case DepthFormat.Depth24Stencil8:
-                    depthSize = 24;
-                    stencilSize = 8;
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
-
-            var graphicMode = new GraphicsMode(colorSize, depthSize, stencilSize, 0, ColorFormat.Empty, 2, false);
-
-            window = new OpenTK.GameWindow(pp.BackBufferWidth, pp.BackBufferHeight, graphicMode);
-            window.RenderFrame += OnRenderFrame;
-            window.UpdateFrame += OnUpdateFrame;
-		*/
             window = new NativeWindow();
             window.Closing += new EventHandler<CancelEventArgs>(OpenTkGameWindow_Closing);
             window.Resize += OnResize;
@@ -370,7 +320,7 @@ namespace Microsoft.Xna.Framework
 #endif
 
             window.KeyPress += OnKeyPress;
-            
+
             // Set the window icon.
             var assembly = Assembly.GetEntryAssembly();
             if(assembly != null)
@@ -381,6 +331,7 @@ namespace Microsoft.Xna.Framework
             clientBounds = new Rectangle(window.ClientRectangle.X, window.ClientRectangle.Y,
                                          window.ClientRectangle.Width, window.ClientRectangle.Height);
             windowState = window.WindowState;            
+
             _windowHandle = window.WindowInfo.Handle;
 
             keys = new List<Keys>();
@@ -388,40 +339,21 @@ namespace Microsoft.Xna.Framework
             // mouse
             // TODO review this when opentk 1.1 is released
 #if WINDOWS || LINUX || ANGLE
-            Mouse.setWindows(window);
+            Mouse.setWindows(this);
 #else
             Mouse.UpdateMouseInfo(window.Mouse);
 #endif
 
-            //Default no resizing
-            IsBorderless = IsBorderless;
-            AllowUserResizing = AllowUserResizing;
+            // Default no resizing
+            AllowUserResizing = false;
 
-            window.Title = _title;
+            // Default mouse cursor hidden 
+            SetMouseVisible(false);
         }
 
         protected override void SetTitle(string title)
         {
-            _title = title;
-            if (window != null)
-            {
-                window.Title = _title;
-            }
-        }
-
-        internal void Run()
-        {
-            while (window.Exists)
-            {
-                window.ProcessEvents();
-                UpdateWindowState();
-
-                if (Game != null)
-                {
-                    HandleInput();
-                    Game.Tick();
-                }
-            }
+            window.Title = title;            
         }
 
         internal void ToggleFullScreen()
@@ -476,27 +408,10 @@ namespace Microsoft.Xna.Framework
 
         }
 
-#if WINDOWS
-        // Todo: instead of loading winforms, we can either
-        // release the cursor when it reaches the window bounds
-        // or set a blank cursor (review after OpenTK 1.1.2 is released)
         public void SetMouseVisible(bool visible)
         {
-            if (visible)
-            {
-                if (_isMouseHidden)
-                {
-                    System.Windows.Forms.Cursor.Show();
-                    _isMouseHidden = false;
-                }
-            }
-            else if (!_isMouseHidden && _isMouseInBounds)
-            {
-                System.Windows.Forms.Cursor.Hide();
-                _isMouseHidden = true;
-            }
+            window.Cursor = visible ? MouseCursor.Default : MouseCursor.Empty;
         }
-#endif
 
         #endregion
     }

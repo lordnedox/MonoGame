@@ -18,10 +18,24 @@ namespace MonoGame.Tools.Pipeline
     {                
         public override bool GetStandardValuesSupported(ITypeDescriptorContext context)
         {
-            if (GetStandardValues(context).Count > 0)
-                return true;
+            if (context.Instance is Array)
+            {
+                var array = context.Instance as Array;
+                foreach (var obj in array)
+                {
+                    var item = obj as ContentItem;
+                    if (item.BuildAction == BuildAction.Copy)
+                        return false;
+                }
+            }
+            else
+            {
+                var contentItem = (context.Instance as ContentItem);
+                if (contentItem.BuildAction == BuildAction.Copy)
+                    return false;
+            }                
                         
-            return false;
+            return true;
         }
 
         public override bool GetStandardValuesExclusive(ITypeDescriptorContext context)
@@ -30,49 +44,17 @@ namespace MonoGame.Tools.Pipeline
         }
 
         public override StandardValuesCollection GetStandardValues(ITypeDescriptorContext context)
-        {
-            var importers = new List<ImporterTypeDescription>();
-            var contentItem = (context.Instance as ContentItem);
-            
-            if (contentItem.BuildAction == BuildAction.Copy)
-            {
-                // Copy items do not have importers.
-                return new StandardValuesCollection(importers);
-            }
-            else if (!string.IsNullOrEmpty(contentItem.SourceFile))
-            {
-                // If the asset has a file extension then show only importers which accept it.
-                var ext = Path.GetExtension(contentItem.SourceFile);
-                if (!string.IsNullOrEmpty(ext))
-                {
-                    foreach (var i in PipelineTypes.Importers)
-                    {
-                        if (i.FileExtensions.Contains(ext))
-                        {
-                            importers.Add(i);
-                        }
-                    }
-
-                    // If we didn't find any importers targeting this extensions, just show all of them.
-                    if (importers.Count > 0)
-                        return new StandardValuesCollection(importers);
-                }
-            }
-
-            // Default case, show all importers.
-            return new StandardValuesCollection(PipelineTypes.Importers);
+        {            
+            return PipelineTypes.ImportersStandardValuesCollection;
         }
 
         public override bool CanConvertFrom(ITypeDescriptorContext context, Type sourceType)
         {
             if (sourceType == typeof (string))
-            {
                 return true;
-            }
 
             return base.CanConvertFrom(context, sourceType);
         }
-
 
         public override object ConvertFrom(ITypeDescriptorContext context, CultureInfo culture, object value)
         {
@@ -91,7 +73,7 @@ namespace MonoGame.Tools.Pipeline
                 if (string.IsNullOrEmpty(str))
                     return PipelineTypes.NullImporter;
                 else
-                    return PipelineTypes.MissingImporter;  
+                    return PipelineTypes.MissingImporter;
             }
 
             return base.ConvertFrom(context, culture, value);
@@ -100,14 +82,16 @@ namespace MonoGame.Tools.Pipeline
 
         public override object ConvertTo(ITypeDescriptorContext context, CultureInfo culture, object value, Type destinationType)
         {
-            var contentItem = (ContentItem)context.Instance;
             var importer = (ImporterTypeDescription)value;// contentItem.Importer;
             //System.Diagnostics.Debug.Assert(importer == value);
 
             if (destinationType == typeof (string))
             {
                 if (importer == PipelineTypes.MissingImporter)
+                {
+                    var contentItem = (ContentItem)context.Instance;
                     return string.Format("[missing] {0}", contentItem.ImporterName ?? "[null]");
+                }
 
                 return ((ImporterTypeDescription)value).DisplayName;
             }

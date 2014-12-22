@@ -35,6 +35,8 @@ namespace Microsoft.Xna.Framework.Graphics
         private readonly RenderTargetBinding[] _currentRenderTargetBindings = new RenderTargetBinding[4];
         private int _currentRenderTargetCount;
 
+        internal GraphicsCapabilities GraphicsCapabilities { get; private set; }
+
         public TextureCollection Textures { get; private set; }
 
         public SamplerStateCollection SamplerStates { get; private set; }
@@ -127,8 +129,8 @@ namespace Microsoft.Xna.Framework.Graphics
                 throw new ArgumentNullException("presentationParameters");
             PresentationParameters = gdi.PresentationParameters;
             Setup();
+            GraphicsCapabilities = new GraphicsCapabilities(this);
             GraphicsProfile = gdi.GraphicsProfile;
-            Setup();
             Initialize();
         }
 
@@ -137,6 +139,7 @@ namespace Microsoft.Xna.Framework.Graphics
             PresentationParameters = new PresentationParameters();
             PresentationParameters.DepthStencilFormat = DepthFormat.Depth24;
             Setup();
+            GraphicsCapabilities = new GraphicsCapabilities(this);
             Initialize();
         }
 
@@ -156,17 +159,13 @@ namespace Microsoft.Xna.Framework.Graphics
                 throw new ArgumentNullException("presentationParameters");
             PresentationParameters = presentationParameters;
             Setup();
+            GraphicsCapabilities = new GraphicsCapabilities(this);
             GraphicsProfile = graphicsProfile;
-            Setup();
             Initialize();
         }
 
         private void Setup() 
         {
-#if WINDOWS && OPENGL
-            //((OpenTKGameWindow)Game.Instance.Window).Initialize(PresentationParameters);
-#endif
-
 			// Initialize the main viewport
 			_viewport = new Viewport (0, 0,
 			                         DisplayMode.Width, DisplayMode.Height);
@@ -186,8 +185,6 @@ namespace Microsoft.Xna.Framework.Graphics
 
         internal void Initialize()
         {
-            GraphicsCapabilities.Initialize(this);
-
             PlatformInitialize();
 
             // Force set the default render states.
@@ -285,7 +282,6 @@ namespace Microsoft.Xna.Framework.Graphics
 
         public void Dispose()
         {
-            Disposing(null,null);
             Dispose(true);
             GC.SuppressFinalize(this);
         }
@@ -322,12 +318,20 @@ namespace Microsoft.Xna.Framework.Graphics
             // Manually resetting the device is not currently supported.
             throw new NotImplementedException();
         }
+        */
 
+#if WINDOWS && DIRECTX
         public void Reset(PresentationParameters presentationParameters)
         {
-            throw new NotImplementedException();
-        }
+            PresentationParameters = presentationParameters;
 
+            // Update the back buffer.
+            CreateSizeDependentResources();
+            ApplyRenderTargets(null);        
+        }
+#endif
+
+        /*
         public void Reset(PresentationParameters presentationParameters, GraphicsAdapter graphicsAdapter)
         {
             throw new NotImplementedException();
@@ -400,10 +404,13 @@ namespace Microsoft.Xna.Framework.Graphics
             }
             internal set
             {
-                //check Profile
-                if(value > GraphicsDevice.GetHighestSupportedGraphicsProfile(this))
-                    throw new System.NotSupportedException(String.Format("Could not find a graphics device that supports the {0} profile", value.ToString()));
+                //Check if Profile is supported.
+                //TODO: [DirectX] Recreate the Device using the new 
+                //      feature level each time the Profile changes.
+                if(value > GetHighestSupportedGraphicsProfile(this))
+                    throw new NotSupportedException(String.Format("Could not find a graphics device that supports the {0} profile", value.ToString()));
                 _graphicsProfile = value;
+                GraphicsCapabilities.Initialize(this);
             }
         }
 
@@ -483,6 +490,8 @@ namespace Microsoft.Xna.Framework.Graphics
         internal void ApplyRenderTargets(RenderTargetBinding[] renderTargets)
         {
             var clearTarget = false;
+
+            PlatformResolveRenderTargets();
 
             // Clear the current bindings.
             Array.Clear(_currentRenderTargetBindings, 0, _currentRenderTargetBindings.Length);
@@ -651,7 +660,7 @@ namespace Microsoft.Xna.Framework.Graphics
             DrawUserIndexedPrimitives<T>(primitiveType, vertexData, vertexOffset, numVertices, indexData, indexOffset, primitiveCount, VertexDeclarationCache<T>.VertexDeclaration);
         }
 
-        public void DrawUserIndexedPrimitives<T>(PrimitiveType primitiveType, T[] vertexData, int vertexOffset, int numVertices, short[] indexData, int indexOffset, int primitiveCount, VertexDeclaration vertexDeclaration) where T : struct, IVertexType
+        public void DrawUserIndexedPrimitives<T>(PrimitiveType primitiveType, T[] vertexData, int vertexOffset, int numVertices, short[] indexData, int indexOffset, int primitiveCount, VertexDeclaration vertexDeclaration) where T : struct
         {
             Debug.Assert(vertexData != null && vertexData.Length > 0, "The vertexData must not be null or zero length!");
             Debug.Assert(indexData != null && indexData.Length > 0, "The indexData must not be null or zero length!");
@@ -671,7 +680,7 @@ namespace Microsoft.Xna.Framework.Graphics
 
             PlatformDrawUserIndexedPrimitives<T>(primitiveType, vertexData, vertexOffset, numVertices, indexData, indexOffset, primitiveCount, vertexDeclaration);
         }
-            
+
         private static int GetElementCountArray(PrimitiveType primitiveType, int primitiveCount)
         {
             //TODO: Overview the calculation

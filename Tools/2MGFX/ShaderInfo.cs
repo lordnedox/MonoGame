@@ -6,10 +6,13 @@ namespace TwoMGFX
 {
     public class ShaderInfo
 	{
-		public string fileName { get; private set; }
-		public string fileContent { get; private set; }
+		public string FilePath { get; private set; }
 
-        public ShaderProfile Profile { get; private set; }
+		public string FileContent { get; private set; }
+
+		public ShaderProfile Profile { get; private set; }
+
+		public string OutputFilePath { get; private set; }
 
 		public bool Debug { get; private set; }
 
@@ -17,6 +20,8 @@ namespace TwoMGFX
         public Dictionary<string, SamplerStateInfo> SamplerStates = new Dictionary<string, SamplerStateInfo>();
 
         public List<string> Dependencies { get; private set; }
+
+        public List<string> AdditionalOutputFiles { get; private set; }
 
 		static public ShaderInfo FromFile(string path, Options options)
 		{
@@ -42,6 +47,7 @@ namespace TwoMGFX
             }
             else if (options.Profile == ShaderProfile.PlayStation4)
             {
+                throw new NotSupportedException("PlayStation 4 support isn't available in this build.");
             }
 
 			// If we're building shaders for debug set that flag too.
@@ -67,11 +73,13 @@ namespace TwoMGFX
 				throw new Exception(errors);
 			}
 
-			// Evaluate the results of the parse tree.
-			var result = tree.Eval() as ShaderInfo;
-		    result.Dependencies = dependencies;
-			result.fileName = filePath;
-			result.fileContent = newFile;
+            // Evaluate the results of the parse tree.
+            var result = tree.Eval() as ShaderInfo;
+            result.Dependencies = dependencies;
+            result.FilePath = fullPath;
+            result.FileContent = newFile;
+            result.OutputFilePath = Path.GetFullPath(options.OutputFile);
+            result.AdditionalOutputFiles = new List<string>();
 
             // Remove empty techniques.
             for (var i=0; i < result.Techniques.Count; i++)
